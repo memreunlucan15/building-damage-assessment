@@ -1,0 +1,10 @@
+# Büyük çıktı ve veri klasörleri (GitHub'a yüklenmez)
+/outputs/
+/earthquake_building_dataset/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
