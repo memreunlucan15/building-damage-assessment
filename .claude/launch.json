@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tekne-turu",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8777", "--directory", "C:\\Users\\mehme\\Documents\\GitHub\\tekne-turu-caglar-reis"],
+      "port": 8777
+    }
+  ]
+}
