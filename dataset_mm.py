@@ -18,7 +18,12 @@ from dataset import load_optical_image
 
 
 def _path(sample, suffix):
-    return os.path.join(config.DATA_DIR, sample["cls"], f"{sample['id']}_{suffix}.mat")
+    """Ayni klasordeki kardes modalite dosyasi: <id>_opt.mat -> <id>_<suffix>.mat.
+
+    sample["path"] uzerinden turetilir; boylece veri seti klasoru disindaki
+    dosyalarla da (orn. predict.py) calisir.
+    """
+    return os.path.join(os.path.dirname(sample["path"]), f"{sample['id']}_{suffix}.mat")
 
 
 def _load_sar(path):

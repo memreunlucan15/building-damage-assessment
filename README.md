@@ -1,5 +1,7 @@
 # Deprem Hasar Tespit — Uydu Görüntülerinden Bina Hasarı Sınıflandırma
 
+![tests](https://github.com/memreunlucan15/derin-ogrenme-deprem-hasar-tespit/actions/workflows/tests.yml/badge.svg)
+
 Deprem sonrası uydu görüntülerinden (optik RGB + SAR) bina bazında **ikili hasar
 sınıflandırması**: `intact` (sağlam) / `damaged` (hasarlı). Mühendislik tasarımı
 bitirme projesi.
@@ -54,6 +56,14 @@ Dağıtım (yeni görüntü için tahmin): 5 optik fold modelinin ortalaması �
 
 ```bash
 python ensemble.py                # demo; API için dosya başındaki docstring'e bak
+python predict.py klasor/ --csv tahminler.csv   # CLI: *_opt.mat dosyalarına tahmin
+```
+
+Testler (veri seti ve checkpoint gerektirmez, ~10 sn):
+
+```bash
+pip install pytest
+python -m pytest tests/ -q
 ```
 
 ### Eski hat (Faz 1, tek sabit split)
@@ -77,6 +87,16 @@ CV hattından alınmıştır.
 precision'dan yiyor. ResNet34, footprint ve füzyon denemeleri anlamlı kazanım
 sağlamadı → dağıtım modeli **opt / ResNet18 5-fold ensemble**.
 
+### Görseller (opt, OOF)
+
+| PR / ROC | Confusion Matrix |
+|----------|------------------|
+| ![PR ve ROC eğrileri](assets/pr_roc.png) | ![Confusion matrix](assets/confusion_matrix.png) |
+
+![Grad-CAM örnekleri](assets/gradcam.png)
+
+Grad-CAM: model kararlarının bina ve enkaz bölgelerine odaklandığının nitel kontrolü.
+
 ## Dosya Haritası
 
 | Dosya | Görev |
@@ -90,6 +110,8 @@ sağlamadı → dağıtım modeli **opt / ResNet18 5-fold ensemble**.
 | `split.py`, `train.py`, `evaluate.py`, `cross_validate.py` | Faz-1 (tek modalite) hattı |
 | `cross_validate_mm.py` | Güncel 5-fold CV aracı (opt/SAR/füzyon) |
 | `ensemble.py` | Dağıtım: 5 fold modelinin olasılık ortalaması |
+| `predict.py` | CLI: dosya/klasörden ensemble tahmini (+CSV çıktı) |
+| `tests/` | pytest paketi (sentetik veriyle, eğitimsiz) |
 | `build_report.py`, `build_slides.py`, `render_pptx.py` | Rapor/sunum üretim yardımcıları (tek seferlik) |
 
 ## Notlar
