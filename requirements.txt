@@ -1,0 +1,16 @@
+# Cekirdek pipeline
+torch>=2.0
+torchvision>=0.15
+numpy
+h5py
+scikit-learn
+matplotlib
+Pillow
+
+# Opsiyonel: SAR-HUB agirliklarini Google Drive'dan indirmek icin
+# gdown
+
+# Opsiyonel: rapor/sunum uretimi (build_report.py, build_slides.py, render_pptx.py)
+# python-docx
+# python-pptx
+# pywin32

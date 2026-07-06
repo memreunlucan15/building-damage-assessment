@@ -40,6 +40,7 @@ def main():
     skf = StratifiedKFold(n_splits=args.folds, shuffle=True, random_state=config.SEED)
 
     oof_probs = np.zeros(len(samples))
+    oof_filled = np.zeros(len(samples), dtype=bool)
     fold_metrics = []
     for fold, (tr_idx, te_idx) in enumerate(skf.split(samples, labels), 1):
         print(f"\n===== [{tag}] Fold {fold}/{args.folds} =====")
@@ -56,6 +57,7 @@ def main():
         thr, feasible = pick_threshold(val_probs, val_labels)
         te_probs, te_labels = predict_probs(model, list(samples[te_idx]), modalities)
         oof_probs[te_idx] = te_probs
+        oof_filled[te_idx] = True
 
         m = _metrics_at(te_probs, te_labels, thr)
         m["threshold_feasible"] = bool(feasible)
@@ -70,6 +72,7 @@ def main():
         summary[key] = {"mean": mu, "std": sd}
         print(f"  {key:10s}: {mu:.3f} +/- {sd:.3f}")
 
+    assert oof_filled.all(), "OOF eksik: her ornek tam bir kez fold testine girmeli"
     oof_labels = labels.astype(int)
     oof_thr, _ = pick_threshold(oof_probs, oof_labels)
     oof_m = _metrics_at(oof_probs, oof_labels, oof_thr)
