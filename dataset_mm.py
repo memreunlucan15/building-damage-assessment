@@ -86,13 +86,17 @@ class MultiModalDataset(Dataset):
 
     def __getitem__(self, idx):
         s = self.samples[idx]
-        p = {
-            "h": random.random() < 0.5,
-            "v": random.random() < 0.5,
-            "angle": random.uniform(-20, 20),
-            "bright": random.uniform(0.8, 1.2),
-            "contrast": random.uniform(0.8, 1.2),
-        }
+        # Augment parametreleri yalnizca egitimde uretilir; eval'da random
+        # tuketmemek determinizmi korur.
+        p = None
+        if self.train:
+            p = {
+                "h": random.random() < 0.5,
+                "v": random.random() < 0.5,
+                "angle": random.uniform(-20, 20),
+                "bright": random.uniform(0.8, 1.2),
+                "contrast": random.uniform(0.8, 1.2),
+            }
         inputs = {m: _modality_tensor(m, s, self.train, p) for m in self.modalities}
         y = torch.tensor(s["label"], dtype=torch.long)
         return inputs, y

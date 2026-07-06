@@ -5,12 +5,11 @@ import json
 import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.metrics import (f1_score, fbeta_score, precision_score,
-                             recall_score)
 from torch.utils.data import DataLoader
 
 import config
 from dataset import QuickQuakeDataset
+from engine import run_epoch
 from losses import FocalLoss
 from model import build_model
 from split import load_split, make_split
@@ -26,37 +25,8 @@ def class_weights(train_samples):
     """Ters frekans agirligi -> azinlik (damaged) sinifina daha cok agirlik."""
     labels = np.array([s["label"] for s in train_samples])
     counts = np.bincount(labels, minlength=2)
-    weights = counts.sum() / (2.0 * counts)
+    weights = counts.sum() / (2.0 * np.maximum(counts, 1))
     return torch.tensor(weights, dtype=torch.float32, device=config.DEVICE)
-
-
-def run_epoch(model, loader, criterion, optimizer=None):
-    train_mode = optimizer is not None
-    model.train(train_mode)
-    total_loss, all_preds, all_labels = 0.0, [], []
-    for x, y in loader:
-        x, y = x.to(config.DEVICE), y.to(config.DEVICE)
-        with torch.set_grad_enabled(train_mode):
-            logits = model(x)
-            loss = criterion(logits, y)
-            if train_mode:
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-        total_loss += loss.item() * x.size(0)
-        all_preds.append(logits.argmax(1).cpu().numpy())
-        all_labels.append(y.cpu().numpy())
-    preds = np.concatenate(all_preds)
-    labels = np.concatenate(all_labels)
-    metrics = {
-        "loss": total_loss / len(loader.dataset),
-        "f1": f1_score(labels, preds, pos_label=config.POSITIVE_IDX, zero_division=0),
-        "fbeta": fbeta_score(labels, preds, beta=config.THRESHOLD_BETA,
-                             pos_label=config.POSITIVE_IDX, zero_division=0),
-        "recall": recall_score(labels, preds, pos_label=config.POSITIVE_IDX, zero_division=0),
-        "precision": precision_score(labels, preds, pos_label=config.POSITIVE_IDX, zero_division=0),
-    }
-    return metrics
 
 
 def main():

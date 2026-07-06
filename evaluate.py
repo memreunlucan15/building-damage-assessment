@@ -75,8 +75,15 @@ class GradCAM:
         self.model = model
         self.acts = None
         self.grads = None
-        target_layer.register_forward_hook(self._fwd)
-        target_layer.register_full_backward_hook(self._bwd)
+        self._handles = [
+            target_layer.register_forward_hook(self._fwd),
+            target_layer.register_full_backward_hook(self._bwd),
+        ]
+
+    def remove(self):
+        """Hook'lari kaldirir; model baska yerde tekrar kullanilacaksa cagrilmali."""
+        for h in self._handles:
+            h.remove()
 
     def _fwd(self, m, i, o):
         self.acts = o.detach()
@@ -124,6 +131,7 @@ def gradcam_grid(model, samples, probs, threshold, n=6):
     out = config.OUTPUT_DIR / "gradcam.png"
     fig.savefig(out, dpi=130)
     print(f"Grad-CAM: {out}")
+    cam.remove()
 
 
 def main():
