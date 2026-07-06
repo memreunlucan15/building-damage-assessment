@@ -2,6 +2,15 @@
 /outputs/
 /earthquake_building_dataset/
 
+# İndirilebilir üçüncü parti ağırlıklar (bkz. README: SAR-HUB)
+/weights/
+
+# IDE
+.idea/
+
+# Claude Code (GitHub'a yüklenmez)
+.claude/
+
 # Python
 __pycache__/
 *.py[cod]
