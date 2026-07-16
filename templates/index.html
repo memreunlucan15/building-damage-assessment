@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deprem Hasar Tespiti</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <h1>Deprem Hasar Tespiti</h1>
+        <p class="sub">Uydu görüntüsünden bina hasarı sınıflandırması — 5'li ResNet18 ensemble</p>
+      </div>
+      <div id="badges" class="badges"></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="model-warning" class="banner hidden">
+      Model dosyaları bulunamadı (<code>outputs/cv_opt/fold*.pt</code>). Analiz istekleri çalışmaz —
+      önce <code>cross_validate_mm.py</code> ile modelleri eğitin.
+    </div>
+
+    <nav class="tabs">
+      <button id="tab-btn-single" class="tab active">Tek Bina Analizi</button>
+      <button id="tab-btn-scene" class="tab">Geniş Sahne Analizi</button>
+    </nav>
+
+    <div id="tab-single">
+    <section id="upload-card" class="card">
+      <h2>Görüntü Yükle</h2>
+      <div id="dropzone" tabindex="0">
+        <p class="dz-main">Görüntüleri sürükleyip bırakın veya seçmek için tıklayın</p>
+        <p class="dz-hint">PNG, JPG, TIF veya <code>_opt.mat</code> — en fazla <span id="max-files">16</span> dosya</p>
+      </div>
+      <input id="file-input" type="file" multiple hidden
+             accept=".png,.jpg,.jpeg,.tif,.tiff,.mat">
+      <ul id="staged"></ul>
+      <div class="controls">
+        <div class="ctrl">
+          <label for="threshold">Karar eşiği: <strong id="threshold-val">0.40</strong></label>
+          <input id="threshold" type="range" min="0.05" max="0.95" step="0.01" value="0.40">
+        </div>
+        <label class="ctrl checkbox">
+          <input id="gradcam-toggle" type="checkbox" checked>
+          Grad-CAM ısı haritası üret
+        </label>
+        <div class="ctrl buttons">
+          <button id="analyze" class="btn primary" disabled>Analiz Et</button>
+          <button id="clear-staged" class="btn ghost hidden">Temizle</button>
+        </div>
+      </div>
+      <p class="hint">Eşik üstü olasılık <strong class="t-danger">HASARLI</strong> sayılır; varsayılan 0.40,
+        çapraz doğrulama (OOF) üzerinde seçilmiştir. Model binaya odaklı kesitlerle eğitildi —
+        geniş sahne yüklediyseniz önce <em>Kırp</em> ile binayı seçin.</p>
+    </section>
+
+    <section id="samples-card" class="card hidden">
+      <h2>Örnek görüntüler <span class="muted">(yerel veri setinden)</span></h2>
+      <p class="hint">Bir örneğe tıklayın — anında analiz edilir.</p>
+      <div id="samples-strip"></div>
+    </section>
+
+    <section id="results-card" class="card hidden">
+      <div class="results-head">
+        <h2>Sonuçlar</h2>
+        <span id="summary" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="csv" class="btn ghost">CSV İndir</button>
+        <button id="clear-results" class="btn ghost">Sonuçları Temizle</button>
+      </div>
+      <div id="cards"></div>
+      <div class="table-wrap">
+        <table id="results-table">
+          <thead>
+            <tr><th>Dosya</th><th>p(hasarlı)</th><th>Tahmin</th><th>Gerçek</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+    </div><!-- /tab-single -->
+
+    <div id="tab-scene" class="hidden">
+      <section id="scene-upload-card" class="card">
+        <h2>Geniş Sahne Yükle</h2>
+        <div id="scene-drop" class="dropzone-like" tabindex="0">
+          <p class="dz-main">Geniş kesit görüntüsünü sürükleyip bırakın veya tıklayın</p>
+          <p class="dz-hint">Onlarca bina içeren tek görüntü — PNG, JPG, TIF (en fazla 8000 px kenar / 40 MP)</p>
+        </div>
+        <input id="scene-file-input" type="file" hidden accept=".png,.jpg,.jpeg,.tif,.tiff">
+        <p id="scene-staged" class="hint hidden"></p>
+        <div class="controls">
+          <div class="ctrl">
+            <span class="ctrl-label">Tespit yöntemi</span>
+            <label class="radio"><input type="radio" name="scene-mode" id="mode-yolo" value="yolo" checked>
+              YOLO bina tespiti</label>
+            <label class="radio"><input type="radio" name="scene-mode" id="mode-grid" value="grid">
+              Izgara taraması + ısı haritası</label>
+          </div>
+          <div class="ctrl" id="scene-window-ctrl">
+            <label for="scene-window">Pencere: <strong id="scene-window-val">96</strong> px</label>
+            <input id="scene-window" type="range" min="64" max="192" step="16" value="96">
+          </div>
+          <div class="ctrl">
+            <label for="scene-threshold">Karar eşiği: <strong id="scene-threshold-val">0.40</strong></label>
+            <input id="scene-threshold" type="range" min="0.05" max="0.95" step="0.01" value="0.40">
+          </div>
+          <div class="ctrl buttons">
+            <button id="scene-analyze" class="btn primary" disabled>Sahneyi Analiz Et</button>
+          </div>
+        </div>
+        <p id="scene-status" class="hint hidden"></p>
+        <p class="hint">YOLO modu binaları otomatik bulur (hazır model, kusursuz değil);
+          ızgara modu tüm sahneyi tarayıp hasar ısı haritası çıkarır — enkazı da yakalar.
+          Analiz sahne boyutuna göre <strong>10–60 saniye</strong> sürebilir.
+          Pencere boyutu ~0.5 m/px çözünürlükte ortalama bina boyutuna göre seçilir.</p>
+      </section>
+
+      <section id="scene-viewer-card" class="card hidden">
+        <div class="results-head">
+          <h2>Hasar Haritası</h2>
+          <span id="scene-summary" class="muted"></span>
+          <span class="spacer"></span>
+          <button id="btn-add-box" class="btn ghost">Kutu Ekle</button>
+          <button id="btn-fit" class="btn ghost">Sığdır</button>
+          <a id="btn-scene-png" class="btn ghost" href="#">PNG İndir</a>
+          <a id="btn-scene-csv" class="btn ghost" href="#">CSV İndir</a>
+        </div>
+        <div class="results-head" id="heatmap-row">
+          <label class="ctrl checkbox"><input id="heatmap-toggle" type="checkbox" checked>
+            Isı haritası</label>
+          <input id="heatmap-alpha" type="range" min="0" max="100" value="55">
+        </div>
+        <div class="scene-layout">
+          <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="scene-canvas"></canvas>
+            <div id="scene-tooltip" class="hidden"></div>
+          </div>
+          <aside id="scene-panel">
+            <div id="panel-content">
+              <p class="hint">Bir kutuya tıklayın: olasılık, kaynak ve Grad-CAM burada görünür.
+                Fare tekerleği ile yakınlaşın, sürükleyerek gezinin.</p>
+            </div>
+          </aside>
+        </div>
+        <div class="legend">
+          <span><i class="sw sw-danger"></i> hasarlı (eşik üstü)</span>
+          <span><i class="sw sw-safe"></i> sağlam</span>
+          <span><i class="sw sw-sel"></i> seçili</span>
+          <span class="muted">Izgara kutuları eşik altında gizlenir.</span>
+        </div>
+      </section>
+    </div><!-- /tab-scene -->
+  </main>
+
+  <footer>
+    Mühendislik tasarımı bitirme projesi — sonuçlar yalnızca araştırma amaçlıdır.
+  </footer>
+
+  <div id="crop-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Görüntüyü Kırp</h3>
+      <p class="hint">Fare ile binayı çevreleyen bir dikdörtgen çizin (en az 32×32 piksel).</p>
+      <div class="crop-canvas-wrap"><canvas id="crop-canvas"></canvas></div>
+      <div class="modal-foot">
+        <span id="crop-size" class="muted">—</span>
+        <span class="spacer"></span>
+        <button id="crop-cancel" class="btn ghost">İptal</button>
+        <button id="crop-apply" class="btn primary" disabled>Kırp ve Kullan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='scene.js') }}"></script>
+</body>
+</html>
