@@ -34,7 +34,9 @@ def test_load_sar_db_norm_range(synth_dataset):
 
 
 def test_load_sar_fills_nonfinite(tmp_path):
-    from tests.conftest import write_sar_mat
+    # "tests.conftest" DEGIL: ultralytics site-packages'a kuresel "tests" paketi
+    # kuruyor ve onu golgeliyor; conftest yerel sys.path uzerinden bulunur.
+    from conftest import write_sar_mat
     p = tmp_path / "x_SAR.mat"
     write_sar_mat(p, with_nan=True)
     t = _load_sar(str(p))
