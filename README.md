@@ -1,6 +1,6 @@
 # Deprem Hasar Tespit — Uydu Görüntülerinden Bina Hasarı Sınıflandırma
 
-![tests](https://github.com/memreunlucan15/derin-ogrenme-deprem-hasar-tespit/actions/workflows/tests.yml/badge.svg)
+![tests](https://github.com/memreunlucan15/building-damage-assessment/actions/workflows/tests.yml/badge.svg)
 
 Deprem sonrası uydu görüntülerinden (optik RGB + SAR) bina bazında **ikili hasar
 sınıflandırması**: `intact` (sağlam) / `damaged` (hasarlı). Mühendislik tasarımı
@@ -59,6 +59,47 @@ python ensemble.py                # demo; API için dosya başındaki docstring'
 python predict.py klasor/ --csv tahminler.csv   # CLI: *_opt.mat dosyalarına tahmin
 ```
 
+### Web arayüzü
+
+Eğitilmiş ensemble ile tarayıcıdan hasar analizi:
+
+```bash
+python app.py     # http://127.0.0.1:5000
+```
+
+- Sürükle-bırak yükleme: **PNG / JPG / TIF / `_opt.mat`** (en fazla 16 dosya, toplu analiz)
+- Sonuç tablosu + **CSV indirme** (noktalı virgül ayraçlı, Türkçe Excel uyumlu)
+- **Ayarlanabilir karar eşiği** (varsayılan 0.40 — OOF'ta seçilen dağıtım eşiği);
+  eşik değişince etiketler sunucuya gitmeden yeniden hesaplanır
+- **Grad-CAM ısı haritası** (5 fold ortalaması) — kart üzerinde orijinal/CAM geçişi
+- Veri setinden **tek tık örnekler** (yerel `earthquake_building_dataset/` varsa)
+- Tarayıcıda **kırpma aracı**: geniş sahneden bina kesiti seçme (model bina-merkezli
+  kesitlerle eğitildiği için önemli)
+- Tamamen çevrimdışı çalışır (CDN yok); modeller ilk açılışta bir kez yüklenir
+
+#### Geniş sahne analizi (hasar haritası)
+
+"Geniş Sahne Analizi" sekmesi, onlarca/yüzlerce bina içeren tek bir kesit
+görüntüsünü (PNG/JPG/TIF, ≤8000 px / 40 MP) analiz eder:
+
+- **YOLO bina tespiti** (opsiyonel): hazır uydu bina modeli kutuları bulur,
+  her kutu ensemble ile sınıflandırılır. Kurulum:
+  ```bash
+  pip install ultralytics huggingface_hub
+  python detector.py --download    # ~52 MB, bir kez
+  ```
+- **Izgara taraması**: bağımlılıksız; sahne örtüşen pencerelerle taranır,
+  hasar **ısı haritası** + eşik üstü hücre kutuları üretilir (enkazı da yakalar)
+- İki aşamalı hız: önce fold-1 hızlı eleme, adaylara tam 5-fold+TTA
+- Görüntüleyici: yakınlaştır/gezin, kutuya tıkla → olasılık + Grad-CAM,
+  **Kutu Ekle** ile kaçırılan binayı elle çiz, Delete ile sil
+- İşaretli tam çözünürlük **PNG** ve kutu listesi **CSV** indirme
+- Elinizde geniş sahne yoksa veri setinden sentetik mozaik üretin ve ölçün:
+  ```bash
+  python make_mosaic.py --n-buildings 40 --damaged-frac 0.3 --seed 42 --out outputs/mosaic/demo.png
+  python evaluate_scene.py outputs/mosaic/demo.png outputs/mosaic/demo_truth.csv --mode grid
+  ```
+
 Testler (veri seti ve checkpoint gerektirmez, ~10 sn):
 
 ```bash
@@ -111,6 +152,12 @@ Grad-CAM: model kararlarının bina ve enkaz bölgelerine odaklandığının nit
 | `cross_validate_mm.py` | Güncel 5-fold CV aracı (opt/SAR/füzyon) |
 | `ensemble.py` | Dağıtım: 5 fold modelinin olasılık ortalaması |
 | `predict.py` | CLI: dosya/klasörden ensemble tahmini (+CSV çıktı) |
+| `inference.py` | Web arayüzü çıkarım çekirdeği: görüntü okuma, TTA tahmin, Grad-CAM |
+| `app.py` | Flask web arayüzü (`python app.py` → http://127.0.0.1:5000) |
+| `templates/`, `static/` | Arayüz HTML/CSS/JS (çevrimdışı, bağımlılıksız) |
+| `scene.py` | Geniş sahne motoru: tile/ızgara, iki aşamalı sınıflandırma, ısı haritası |
+| `detector.py` | Opsiyonel YOLO bina tespitçisi sarmalayıcısı (ultralytics) |
+| `make_mosaic.py`, `evaluate_scene.py` | Sentetik geniş sahne üretimi + nicel doğrulama |
 | `tests/` | pytest paketi (sentetik veriyle, eğitimsiz) |
 | `build_report.py`, `build_slides.py`, `render_pptx.py` | Rapor/sunum üretim yardımcıları (tek seferlik) |
 
