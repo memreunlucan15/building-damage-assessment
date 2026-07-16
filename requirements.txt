@@ -7,6 +7,14 @@ scikit-learn
 matplotlib
 Pillow
 
+# Web arayuzu (app.py)
+flask
+
+# Opsiyonel: genis sahne YOLO bina tespiti (CI'da KURULMAZ; izgara modu bunlarsiz calisir)
+# Dogrulanan surum: ultralytics 8.4.92 (keremberke/yolov8m-building-segmentation yukluyor)
+# ultralytics
+# huggingface_hub
+
 # Opsiyonel: SAR-HUB agirliklarini Google Drive'dan indirmek icin
 # gdown
 

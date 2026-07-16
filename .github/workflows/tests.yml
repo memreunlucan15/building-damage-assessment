@@ -16,5 +16,5 @@ jobs:
           cache: pip
       # CPU-only torch: CI icin kucuk ve yeterli
       - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-      - run: pip install numpy h5py scikit-learn matplotlib Pillow pytest
+      - run: pip install numpy h5py scikit-learn matplotlib Pillow pytest flask
       - run: python -m pytest tests/ -q
